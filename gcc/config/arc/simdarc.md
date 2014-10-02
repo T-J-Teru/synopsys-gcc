@@ -5,7 +5,12 @@
   UNSPEC_ARCV2_DMPYHU
   UNSPEC_ARCV2_QMACH
   UNSPEC_ARCV2_QMACHU
+  UNSPEC_ARCV2_QMPYH
+  UNSPEC_ARCV2_QMPYHU
   UNSPEC_ARCV2_VMAC2H
+  UNSPEC_ARCV2_VMAC2HU
+  UNSPEC_ARCV2_VMPY2H
+  UNSPEC_ARCV2_VMPY2HU
 ])
 
 ;;64-bit vectors of halwords and words
@@ -181,130 +186,94 @@
    (set_attr "predicable" "yes,no")
    (set_attr "cond" "canuse,nocond")])
 
+(define_insn "addsubv4hi3"
+  [(set (match_operand:V4HI 0 "register_operand" "=r,r")
+	(vec_concat:V4HI
+	 (vec_concat:V2HI
+	  (plus:HI (vec_select:HI (match_operand:V4HI 1 "register_operand" "0,r")
+				  (parallel [(const_int 0)]))
+		   (vec_select:HI (match_operand:V4HI 2 "register_operand" "r,r")
+				  (parallel [(const_int 0)])))
+	  (minus:HI (vec_select:HI (match_dup 1) (parallel [(const_int 1)]))
+		    (vec_select:HI (match_dup 2) (parallel [(const_int 1)]))))
+	 (vec_concat:V2HI
+	  (plus:HI (vec_select:HI (match_dup 1) (parallel [(const_int 2)]))
+		   (vec_select:HI (match_dup 2) (parallel [(const_int 2)])))
+	  (minus:HI (vec_select:HI (match_dup 1) (parallel [(const_int 3)]))
+		    (vec_select:HI (match_dup 2) (parallel [(const_int 3)]))))
+	 ))]
+  "TARGET_V2"
+  "vaddsub4h%? %0, %1, %2"
+  [(set_attr "length" "4")
+   (set_attr "type" "multi")
+   (set_attr "predicable" "yes,no")
+   (set_attr "cond" "canuse,nocond")])
+
+(define_insn "subaddv4hi3"
+  [(set (match_operand:V4HI 0 "register_operand" "=r,r")
+	(vec_concat:V4HI
+	 (vec_concat:V2HI
+	  (minus:HI (vec_select:HI (match_operand:V4HI 1 "register_operand" "0,r")
+				   (parallel [(const_int 0)]))
+		    (vec_select:HI (match_operand:V4HI 2 "register_operand" "r,r")
+				  (parallel [(const_int 0)])))
+	  (plus:HI (vec_select:HI (match_dup 1) (parallel [(const_int 1)]))
+		   (vec_select:HI (match_dup 2) (parallel [(const_int 1)]))))
+	 (vec_concat:V2HI
+	  (minus:HI (vec_select:HI (match_dup 1) (parallel [(const_int 2)]))
+		    (vec_select:HI (match_dup 2) (parallel [(const_int 2)])))
+	  (plus:HI (vec_select:HI (match_dup 1) (parallel [(const_int 3)]))
+		   (vec_select:HI (match_dup 2) (parallel [(const_int 3)]))))
+	 ))]
+  "TARGET_V2"
+  "vsubadd4h%? %0, %1, %2"
+  [(set_attr "length" "4")
+   (set_attr "type" "multi")
+   (set_attr "predicable" "yes,no")
+   (set_attr "cond" "canuse,nocond")])
+
 ;; Multiplication
-(define_insn "dmach"
-  [(set (match_operand:SI 0 "register_operand" "=r,r")
-	(unspec:SI [(match_operand:V2HI 1 "register_operand" "0,r")
-		    (match_operand:V2HI 2 "register_operand" "r,r")
-		    (match_operand:DI 3 "mlo_operand" "")]
-		   UNSPEC_ARCV2_DMACH))
-   (clobber (match_dup 3))]
-  "TARGET_V2"
-  "dmach%? %0, %1, %2"
-  [(set_attr "length" "4")
-   (set_attr "type" "multi")
-   (set_attr "predicable" "yes,no")
-   (set_attr "cond" "canuse,nocond")])
-
-(define_insn "dmachu"
-  [(set (match_operand:SI 0 "register_operand" "=r,r")
-	(unspec:SI [(match_operand:V2HI 1 "register_operand" "0,r")
-		    (match_operand:V2HI 2 "register_operand" "r,r")
-		    (match_operand:DI 3 "mlo_operand" "")]
-		   UNSPEC_ARCV2_DMACHU))
-   (clobber (match_dup 3))]
-  "TARGET_V2"
-  "dmachu%? %0, %1, %2"
-  [(set_attr "length" "4")
-   (set_attr "type" "multi")
-   (set_attr "predicable" "yes,no")
-   (set_attr "cond" "canuse,nocond")])
-
-(define_insn "dmpyh"
-  [(set (match_operand:SI 0 "register_operand" "=r,r")
-	(unspec:SI [(match_operand:V2HI 1 "register_operand" "0,r")
-		    (match_operand:V2HI 2 "register_operand" "r,r")]
-		   UNSPEC_ARCV2_DMPYH))
-   (clobber (match_operand:DI 3 "mlo_operand" ""))]
-  "TARGET_V2"
-  "dmpyh%? %0, %1, %2"
-  [(set_attr "length" "4")
-   (set_attr "type" "multi")
-   (set_attr "predicable" "yes,no")
-   (set_attr "cond" "canuse,nocond")])
-
-(define_insn "dmpyhu"
-  [(set (match_operand:SI 0 "register_operand" "=r,r")
-	(unspec:SI [(match_operand:V2HI 1 "register_operand" "0,r")
-		    (match_operand:V2HI 2 "register_operand" "r,r")]
-		   UNSPEC_ARCV2_DMPYHU))
-   (clobber (match_operand:DI 3 "mlo_operand" ""))]
-  "TARGET_V2"
-  "dmpyhu%? %0, %1, %2"
-  [(set_attr "length" "4")
-   (set_attr "type" "multi")
-   (set_attr "predicable" "yes,no")
-   (set_attr "cond" "canuse,nocond")])
-
-(define_expand "sdot_prodv2hi"
-  [(match_operand:SI 0 "register_operand" "")
-   (match_operand:V2HI 1 "register_operand" "")
-   (match_operand:V2HI 2 "register_operand" "")
-   (match_operand:SI 3 "register_operand" "")]
-  "TARGET_V2"
-{
-  rtx t = gen_rtx_REG (SImode, TARGET_BIG_ENDIAN ? 59 : 58);
-  emit_move_insn (t, operands[3]);
-  emit_insn (gen_dmach (operands[0], operands[1], operands[2], t));
-  DONE;
-})
-
-(define_expand "udot_prodv2hi"
-  [(match_operand:SI 0 "register_operand" "")
-   (match_operand:V2HI 1 "register_operand" "")
-   (match_operand:V2HI 2 "register_operand" "")
-   (match_operand:SI 3 "register_operand" "")]
-  "TARGET_V2"
-{
-  rtx t = gen_rtx_REG (SImode, TARGET_BIG_ENDIAN ? 59 : 58);
-  emit_move_insn (t, operands[3]);
-  emit_insn (gen_dmachu (operands[0], operands[1], operands[2], t));
-  DONE;
-})
-
-(define_insn "qmach"
-  [(set (match_operand:DI 0 "register_operand" "=r,r")
-	(unspec:DI [(match_operand:V4HI 1 "register_operand" "0,r")
-		      (match_operand:V4HI 2 "register_operand" "r,r")
-		      (match_operand:DI 3 "mlo_operand" "")]
-		     UNSPEC_ARCV2_QMACH))
-   (clobber (match_dup 3))]
-  "TARGET_V2"
-  "qmach%? %0, %1, %2"
-  [(set_attr "length" "4")
-   (set_attr "type" "multi")
-   (set_attr "predicable" "yes,no")
-   (set_attr "cond" "canuse,nocond")])
-
-(define_insn "qmachu"
-  [(set (match_operand:DI 0 "register_operand" "=r,r")
-	(unspec:DI [(match_operand:V4HI 1 "register_operand" "0,r")
-		    (match_operand:V4HI 2 "register_operand" "r,r")
-		    (match_operand:DI 3 "mlo_operand" "")]
-		   UNSPEC_ARCV2_QMACHU))
-   (clobber (match_dup 3))]
-  "TARGET_V2"
-  "qmachu%? %0, %1, %2"
-  [(set_attr "length" "4")
-   (set_attr "type" "multi")
-   (set_attr "predicable" "yes,no")
-   (set_attr "cond" "canuse,nocond")])
+;czi;(define_expand "sdot_prodv2hi"
+;czi;  [(match_operand:SI 0 "register_operand" "")
+;czi;   (match_operand:V2HI 1 "register_operand" "")
+;czi;   (match_operand:V2HI 2 "register_operand" "")
+;czi;   (match_operand:SI 3 "register_operand" "")]
+;czi;  "TARGET_V2"
+;czi;{
+;czi;  rtx t = gen_rtx_REG (SImode, TARGET_BIG_ENDIAN ? 59 : 58);
+;czi;  emit_move_insn (t, operands[3]);
+;czi;  emit_insn (gen_dmach (operands[0], operands[1], operands[2], t));
+;czi;  DONE;
+;czi;})
+;czi;
+;czi;(define_expand "udot_prodv2hi"
+;czi;  [(match_operand:SI 0 "register_operand" "")
+;czi;   (match_operand:V2HI 1 "register_operand" "")
+;czi;   (match_operand:V2HI 2 "register_operand" "")
+;czi;   (match_operand:SI 3 "register_operand" "")]
+;czi;  "TARGET_V2"
+;czi;{
+;czi;  rtx t = gen_rtx_REG (SImode, TARGET_BIG_ENDIAN ? 59 : 58);
+;czi;  emit_move_insn (t, operands[3]);
+;czi;  emit_insn (gen_dmachu (operands[0], operands[1], operands[2], t));
+;czi;  DONE;
+;czi;})
 
 (define_insn "arc_vec_<V_US>mult_lo_v4hi"
- [(set (match_operand:V2SI 0 "nonmemory_operand"                     "=r,r")
+ [(set (match_operand:V2SI 0 "nonmemory_operand"                    "=r,r")
        (mult:V2SI (SE:V2SI (vec_select:V2HI
 			    (match_operand:V4HI 1 "register_operand" "0,r")
 			    (parallel [(const_int 0) (const_int 1)])))
 		  (SE:V2SI (vec_select:V2HI
 			    (match_operand:V4HI 2 "register_operand" "r,r")
 			    (parallel [(const_int 0) (const_int 1)])))))
-  (set (match_operand:V2SI 3 "mlo_operand" "")
+  (set (reg:V2SI MUL64_OUT_REG)
        (mult:V2SI (SE:V2SI (vec_select:V2HI (match_dup 1)
 					    (parallel [(const_int 0) (const_int 1)])))
 		  (SE:V2SI (vec_select:V2HI (match_dup 2)
 					    (parallel [(const_int 0) (const_int 1)])))))
   ]
-  "TARGET_V2"
+  "TARGET_HS"
   "vmpy2h<V_US_suffix>%? %0, %1, %2"
   [(set_attr "length" "4")
    (set_attr "type" "multi")
@@ -312,16 +281,16 @@
    (set_attr "cond" "canuse,nocond")])
 
 (define_insn "arc_vec_<V_US>multacc_lo_v4hi"
-  [(set (match_operand:V2SI 0 "mlo_operand" "")
+  [(set (reg:V2SI MUL64_OUT_REG)
 	(mult:V2SI (SE:V2SI (vec_select:V2HI
-			     (match_operand:V4HI 1 "register_operand" "0,r")
+			     (match_operand:V4HI 0 "register_operand" "0,r")
 			     (parallel [(const_int 0) (const_int 1)])))
 		   (SE:V2SI (vec_select:V2HI
-			     (match_operand:V4HI 2 "register_operand" "r,r")
+			     (match_operand:V4HI 1 "register_operand" "r,r")
 			     (parallel [(const_int 0) (const_int 1)])))))
   ]
   "TARGET_V2"
-  "vmpy2h<V_US_suffix>%? 0, %1, %2"
+  "vmpy2h<V_US_suffix>%? 0, %0, %1"
   [(set_attr "length" "4")
    (set_attr "type" "multi")
    (set_attr "predicable" "yes,no")
@@ -335,13 +304,11 @@
 		  (SE:V2SI (vec_select:V2HI
 			    (match_operand:V4HI 2 "register_operand"   "")
 			    (parallel [(const_int 0) (const_int 1)])))))]
-  "TARGET_V2"
+  "TARGET_HS"
   {
-     rtx acc = gen_rtx_REG (V2SImode, TARGET_BIG_ENDIAN ? 59 : 58);
      emit_insn (gen_arc_vec_<V_US>mult_lo_v4hi (operands[0],
 						operands[1],
-						operands[2],
-						acc));
+						operands[2]));
      DONE;
   }
 )
@@ -354,13 +321,13 @@
 		  (SE:V2SI (vec_select:V2HI
 			    (match_operand:V4HI 2 "register_operand" "r,r")
 			    (parallel [(const_int 2) (const_int 3)])))))
-  (set (match_operand:V2SI 3 "mlo_operand" "")
+  (set (reg:V2SI MUL64_OUT_REG)
        (mult:V2SI (SE:V2SI (vec_select:V2HI (match_dup 1)
 					    (parallel [(const_int 2) (const_int 3)])))
 		  (SE:V2SI (vec_select:V2HI (match_dup 2)
 					    (parallel [(const_int 2) (const_int 3)])))))
   ]
-  "TARGET_V2"
+  "TARGET_HS"
   "vmpy2h<V_US_suffix>%? %0, %R1, %R2"
   [(set_attr "length" "4")
    (set_attr "type" "multi")
@@ -375,13 +342,11 @@
 		  (SE:V2SI (vec_select:V2HI
 				     (match_operand:V4HI 2 "register_operand" "")
 				     (parallel [(const_int 2) (const_int 3)])))))]
-  "TARGET_V2"
+  "TARGET_HS"
   {
-     rtx acc = gen_rtx_REG (V2SImode, TARGET_BIG_ENDIAN ? 59 : 58);
      emit_insn (gen_arc_vec_<V_US>mult_hi_v4hi (operands[0],
 						operands[1],
-						operands[2],
-						acc));
+						operands[2]));
      DONE;
   }
 )
@@ -389,23 +354,23 @@
 (define_insn "arc_vec_<V_US>mac_hi_v4hi"
  [(set (match_operand:V2SI 0 "register_operand"                     "=r,r")
        (plus:V2SI
-	(match_operand:V2SI 1 "mlo_operand"                          "")
+	(reg:V2SI MUL64_OUT_REG)
 	(mult:V2SI (SE:V2SI (vec_select:V2HI
-			     (match_operand:V4HI 2 "register_operand" "0,r")
+			     (match_operand:V4HI 1 "register_operand" "0,r")
 			     (parallel [(const_int 2) (const_int 3)])))
 		   (SE:V2SI (vec_select:V2HI
-			     (match_operand:V4HI 3 "register_operand" "r,r")
+			     (match_operand:V4HI 2 "register_operand" "r,r")
 			     (parallel [(const_int 2) (const_int 3)]))))))
-  (set (match_dup 1)
+  (set (reg:V2SI MUL64_OUT_REG)
        (plus:V2SI
-	(match_dup 1)
-	(mult:V2SI (SE:V2SI (vec_select:V2HI (match_dup 2)
+	(reg:V2SI MUL64_OUT_REG)
+	(mult:V2SI (SE:V2SI (vec_select:V2HI (match_dup 1)
 					     (parallel [(const_int 2) (const_int 3)])))
-		   (SE:V2SI (vec_select:V2HI (match_dup 3)
+		   (SE:V2SI (vec_select:V2HI (match_dup 2)
 					     (parallel [(const_int 2) (const_int 3)]))))))
   ]
-  "TARGET_V2"
-  "vmac2h<V_US_suffix>%? %0, %R2, %R3"
+  "TARGET_HS"
+  "vmac2h<V_US_suffix>%? %0, %R1, %R2"
   [(set_attr "length" "4")
    (set_attr "type" "multi")
    (set_attr "predicable" "yes,no")
@@ -454,3 +419,166 @@
 ;czi;			  t));
 ;czi; DONE;
 ;czi;})
+
+;; Builtins
+(define_insn "dmach"
+  [(set (match_operand:SI 0 "register_operand" "=r,r")
+	(unspec:SI [(match_operand:V2HI 1 "register_operand" "0,r")
+		    (match_operand:V2HI 2 "register_operand" "r,r")
+		    (reg:DI MUL64_OUT_REG)]
+		   UNSPEC_ARCV2_DMACH))
+   (clobber (reg:DI MUL64_OUT_REG))]
+  "TARGET_V2"
+  "dmach%? %0, %1, %2"
+  [(set_attr "length" "4")
+   (set_attr "type" "multi")
+   (set_attr "predicable" "yes,no")
+   (set_attr "cond" "canuse,nocond")])
+
+(define_insn "dmachu"
+  [(set (match_operand:SI 0 "register_operand" "=r,r")
+	(unspec:SI [(match_operand:V2HI 1 "register_operand" "0,r")
+		    (match_operand:V2HI 2 "register_operand" "r,r")
+		    (reg:DI MUL64_OUT_REG)]
+		   UNSPEC_ARCV2_DMACHU))
+   (clobber (reg:DI MUL64_OUT_REG))]
+  "TARGET_V2"
+  "dmachu%? %0, %1, %2"
+  [(set_attr "length" "4")
+   (set_attr "type" "multi")
+   (set_attr "predicable" "yes,no")
+   (set_attr "cond" "canuse,nocond")])
+
+(define_insn "dmpyh"
+  [(set (match_operand:SI 0 "register_operand" "=r,r")
+	(unspec:SI [(match_operand:V2HI 1 "register_operand" "0,r")
+		    (match_operand:V2HI 2 "register_operand" "r,r")]
+		   UNSPEC_ARCV2_DMPYH))
+   (clobber (reg:DI MUL64_OUT_REG))]
+  "TARGET_V2"
+  "dmpyh%? %0, %1, %2"
+  [(set_attr "length" "4")
+   (set_attr "type" "multi")
+   (set_attr "predicable" "yes,no")
+   (set_attr "cond" "canuse,nocond")])
+
+(define_insn "dmpyhu"
+  [(set (match_operand:SI 0 "register_operand" "=r,r")
+	(unspec:SI [(match_operand:V2HI 1 "register_operand" "0,r")
+		    (match_operand:V2HI 2 "register_operand" "r,r")]
+		   UNSPEC_ARCV2_DMPYHU))
+   (clobber (reg:DI MUL64_OUT_REG))]
+  "TARGET_V2"
+  "dmpyhu%? %0, %1, %2"
+  [(set_attr "length" "4")
+   (set_attr "type" "multi")
+   (set_attr "predicable" "yes,no")
+   (set_attr "cond" "canuse,nocond")])
+
+(define_insn "vmac2h"
+  [(set (match_operand:DI 0 "register_operand" "=r,r")
+	(unspec:DI [(match_operand:V2HI 1 "register_operand" "0,r")
+		    (match_operand:V2HI 2 "register_operand" "r,r")
+		    (reg:DI MUL64_OUT_REG)]
+		     UNSPEC_ARCV2_VMAC2H))
+   (clobber (reg:DI MUL64_OUT_REG))]
+  "TARGET_V2"
+  "vmac2h%? %0, %1, %2"
+  [(set_attr "length" "4")
+   (set_attr "type" "multi")
+   (set_attr "predicable" "yes,no")
+   (set_attr "cond" "canuse,nocond")])
+
+(define_insn "vmac2hu"
+  [(set (match_operand:DI 0 "register_operand" "=r,r")
+	(unspec:DI [(match_operand:V2HI 1 "register_operand" "0,r")
+		    (match_operand:V2HI 2 "register_operand" "r,r")
+		    (reg:DI MUL64_OUT_REG)]
+		   UNSPEC_ARCV2_VMAC2HU))
+   (clobber (reg:DI MUL64_OUT_REG))]
+  "TARGET_V2"
+  "vmac2hu%? %0, %1, %2"
+  [(set_attr "length" "4")
+   (set_attr "type" "multi")
+   (set_attr "predicable" "yes,no")
+   (set_attr "cond" "canuse,nocond")])
+
+(define_insn "vmpy2h"
+  [(set (match_operand:DI 0 "register_operand" "=r,r")
+	(unspec:DI [(match_operand:V2HI 1 "register_operand" "0,r")
+		    (match_operand:V2HI 2 "register_operand" "r,r")]
+		     UNSPEC_ARCV2_VMPY2H))
+   (clobber (reg:DI MUL64_OUT_REG))]
+  "TARGET_V2"
+  "vmpy2h%? %0, %1, %2"
+  [(set_attr "length" "4")
+   (set_attr "type" "multi")
+   (set_attr "predicable" "yes,no")
+   (set_attr "cond" "canuse,nocond")])
+
+(define_insn "vmpy2hu"
+  [(set (match_operand:DI 0 "register_operand" "=r,r")
+	(unspec:DI [(match_operand:V2HI 1 "register_operand" "0,r")
+		    (match_operand:V2HI 2 "register_operand" "r,r")]
+		   UNSPEC_ARCV2_VMPY2HU))
+   (clobber (reg:DI MUL64_OUT_REG))]
+  "TARGET_V2"
+  "vmpy2hu%? %0, %1, %2"
+  [(set_attr "length" "4")
+   (set_attr "type" "multi")
+   (set_attr "predicable" "yes,no")
+   (set_attr "cond" "canuse,nocond")])
+
+(define_insn "qmach"
+  [(set (match_operand:DI 0 "register_operand" "=r,r")
+	(unspec:DI [(match_operand:V4HI 1 "register_operand" "0,r")
+		    (match_operand:V4HI 2 "register_operand" "r,r")
+		    (reg:DI MUL64_OUT_REG)]
+		     UNSPEC_ARCV2_QMACH))
+   (clobber (reg:DI MUL64_OUT_REG))]
+  "TARGET_HS"
+  "qmach%? %0, %1, %2"
+  [(set_attr "length" "4")
+   (set_attr "type" "multi")
+   (set_attr "predicable" "yes,no")
+   (set_attr "cond" "canuse,nocond")])
+
+(define_insn "qmachu"
+  [(set (match_operand:DI 0 "register_operand" "=r,r")
+	(unspec:DI [(match_operand:V4HI 1 "register_operand" "0,r")
+		    (match_operand:V4HI 2 "register_operand" "r,r")
+		    (reg:DI MUL64_OUT_REG)]
+		   UNSPEC_ARCV2_QMACHU))
+   (clobber (reg:DI MUL64_OUT_REG))]
+  "TARGET_HS"
+  "qmachu%? %0, %1, %2"
+  [(set_attr "length" "4")
+   (set_attr "type" "multi")
+   (set_attr "predicable" "yes,no")
+   (set_attr "cond" "canuse,nocond")])
+
+(define_insn "qmpyh"
+  [(set (match_operand:DI 0 "register_operand" "=r,r")
+	(unspec:DI [(match_operand:V4HI 1 "register_operand" "0,r")
+		    (match_operand:V4HI 2 "register_operand" "r,r")]
+		     UNSPEC_ARCV2_QMPYH))
+   (clobber (reg:DI MUL64_OUT_REG))]
+  "TARGET_HS"
+  "qmpyh%? %0, %1, %2"
+  [(set_attr "length" "4")
+   (set_attr "type" "multi")
+   (set_attr "predicable" "yes,no")
+   (set_attr "cond" "canuse,nocond")])
+
+(define_insn "qmpyhu"
+  [(set (match_operand:DI 0 "register_operand" "=r,r")
+	(unspec:DI [(match_operand:V4HI 1 "register_operand" "0,r")
+		    (match_operand:V4HI 2 "register_operand" "r,r")]
+		   UNSPEC_ARCV2_QMPYHU))
+   (clobber (reg:DI MUL64_OUT_REG))]
+  "TARGET_HS"
+  "qmpyhu%? %0, %1, %2"
+  [(set_attr "length" "4")
+   (set_attr "type" "multi")
+   (set_attr "predicable" "yes,no")
+   (set_attr "cond" "canuse,nocond")])

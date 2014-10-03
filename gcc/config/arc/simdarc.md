@@ -1,8 +1,8 @@
 (define_c_enum "unspec" [
   UNSPEC_ARCV2_DMACH
   UNSPEC_ARCV2_DMACHU
-  UNSPEC_ARCV2_DMPYH
-  UNSPEC_ARCV2_DMPYHU
+  UNSPEC_ARCV2_DMACWH
+  UNSPEC_ARCV2_DMACWHU
   UNSPEC_ARCV2_QMACH
   UNSPEC_ARCV2_QMACHU
   UNSPEC_ARCV2_QMPYH
@@ -86,7 +86,8 @@
 (define_insn_and_split "*mov<mode>_insn"
   [(set (match_operand:VWH 0 "nonimmediate_operand" "=r,r,r,m")
 	(match_operand:VWH 1 "general_operand"       "i,r,m,r"))]
-  "GET_CODE (operands[0]) != MEM || GET_CODE (operands[1]) == REG"
+  "TARGET_HS && TARGET_LL64
+   && (GET_CODE (operands[0]) != MEM || GET_CODE (operands[1]) == REG)"
   "@
    #
    vadd2 %0, %1, 0
@@ -129,6 +130,13 @@
     operands[1] = force_reg (<MODE>mode, operands[1]);
 })
 
+(define_insn "bswapv2hi2"
+  [(set (match_operand:V2HI 0 "register_operand" "=r,r")
+        (bswap:V2HI (match_operand:V2HI 1 "nonmemory_operand" "r,i")))]
+  "TARGET_V2 && TARGET_SWAP"
+  "swape %0, %1"
+  [(set_attr "length" "4,8")
+   (set_attr "type" "two_cycle_core")])
 
 ;; Simple arithmetic insns
 (define_insn "add<mode>3"
@@ -233,31 +241,61 @@
    (set_attr "cond" "canuse,nocond")])
 
 ;; Multiplication
-;czi;(define_expand "sdot_prodv2hi"
-;czi;  [(match_operand:SI 0 "register_operand" "")
-;czi;   (match_operand:V2HI 1 "register_operand" "")
-;czi;   (match_operand:V2HI 2 "register_operand" "")
-;czi;   (match_operand:SI 3 "register_operand" "")]
-;czi;  "TARGET_V2"
-;czi;{
-;czi;  rtx t = gen_rtx_REG (SImode, TARGET_BIG_ENDIAN ? 59 : 58);
-;czi;  emit_move_insn (t, operands[3]);
-;czi;  emit_insn (gen_dmach (operands[0], operands[1], operands[2], t));
-;czi;  DONE;
-;czi;})
-;czi;
-;czi;(define_expand "udot_prodv2hi"
-;czi;  [(match_operand:SI 0 "register_operand" "")
-;czi;   (match_operand:V2HI 1 "register_operand" "")
-;czi;   (match_operand:V2HI 2 "register_operand" "")
-;czi;   (match_operand:SI 3 "register_operand" "")]
-;czi;  "TARGET_V2"
-;czi;{
-;czi;  rtx t = gen_rtx_REG (SImode, TARGET_BIG_ENDIAN ? 59 : 58);
-;czi;  emit_move_insn (t, operands[3]);
-;czi;  emit_insn (gen_dmachu (operands[0], operands[1], operands[2], t));
-;czi;  DONE;
-;czi;})
+(define_insn "dmpyh<V_US_suffix>"
+  [(set (match_operand:SI 0 "register_operand" "=r,r")
+	(plus:SI
+	 (mult:SI
+	  (SE:SI
+	   (vec_select:HI (match_operand:V2HI 1 "register_operand" "0,r")
+			  (parallel [(const_int 0)])))
+	  (SE:SI
+	   (vec_select:HI (match_operand:V2HI 2 "register_operand" "r,r")
+			  (parallel [(const_int 0)]))))
+	 (mult:SI
+	  (SE:SI (vec_select:HI (match_dup 1) (parallel [(const_int 1)])))
+	  (SE:SI (vec_select:HI (match_dup 2) (parallel [(const_int 1)]))))))
+   (set (reg:DI MUL64_OUT_REG)
+	(zero_extend:DI
+	 (plus:SI
+	  (mult:SI
+	   (SE:SI (vec_select:HI (match_dup 1) (parallel [(const_int 0)])))
+	   (SE:SI (vec_select:HI (match_dup 2) (parallel [(const_int 0)]))))
+	  (mult:SI
+	   (SE:SI (vec_select:HI (match_dup 1) (parallel [(const_int 1)])))
+	   (SE:SI (vec_select:HI (match_dup 2) (parallel [(const_int 1)])))))))]
+  "TARGET_V2"
+  "dmpy<V_US_suffix>%? %0, %1, %2"
+  [(set_attr "length" "4")
+   (set_attr "type" "multi")
+   (set_attr "predicable" "yes,no")
+   (set_attr "cond" "canuse,nocond")])
+
+;; We can use dmac as well here. To be investigated which version brings more.
+(define_expand "sdot_prodv2hi"
+  [(match_operand:SI 0 "register_operand" "")
+   (match_operand:V2HI 1 "register_operand" "")
+   (match_operand:V2HI 2 "register_operand" "")
+   (match_operand:SI 3 "register_operand" "")]
+  "TARGET_V2"
+{
+ rtx t = gen_reg_rtx (SImode);
+ emit_insn (gen_dmpyh (t, operands[1], operands[2]));
+ emit_insn (gen_addsi3 (operands[0], operands[3], t));
+ DONE;
+})
+
+(define_expand "udot_prodv2hi"
+  [(match_operand:SI 0 "register_operand" "")
+   (match_operand:V2HI 1 "register_operand" "")
+   (match_operand:V2HI 2 "register_operand" "")
+   (match_operand:SI 3 "register_operand" "")]
+  "TARGET_V2"
+{
+ rtx t = gen_reg_rtx (SImode);
+ emit_insn (gen_dmpyhu (t, operands[1], operands[2]));
+ emit_insn (gen_addsi3 (operands[0], operands[3], t));
+ DONE;
+})
 
 (define_insn "arc_vec_<V_US>mult_lo_v4hi"
  [(set (match_operand:V2SI 0 "nonmemory_operand"                    "=r,r")
@@ -449,27 +487,29 @@
    (set_attr "predicable" "yes,no")
    (set_attr "cond" "canuse,nocond")])
 
-(define_insn "dmpyh"
-  [(set (match_operand:SI 0 "register_operand" "=r,r")
-	(unspec:SI [(match_operand:V2HI 1 "register_operand" "0,r")
-		    (match_operand:V2HI 2 "register_operand" "r,r")]
-		   UNSPEC_ARCV2_DMPYH))
+(define_insn "dmacwh"
+  [(set (match_operand:DI 0 "register_operand" "=r,r")
+	(unspec:DI [(match_operand:V2SI 1 "register_operand" "0,r")
+		    (match_operand:V2HI 2 "register_operand" "r,r")
+		    (reg:DI MUL64_OUT_REG)]
+		   UNSPEC_ARCV2_DMACWH))
    (clobber (reg:DI MUL64_OUT_REG))]
-  "TARGET_V2"
-  "dmpyh%? %0, %1, %2"
+  "TARGET_HS"
+  "dmacwh%? %0, %1, %2"
   [(set_attr "length" "4")
    (set_attr "type" "multi")
    (set_attr "predicable" "yes,no")
    (set_attr "cond" "canuse,nocond")])
 
-(define_insn "dmpyhu"
-  [(set (match_operand:SI 0 "register_operand" "=r,r")
-	(unspec:SI [(match_operand:V2HI 1 "register_operand" "0,r")
-		    (match_operand:V2HI 2 "register_operand" "r,r")]
-		   UNSPEC_ARCV2_DMPYHU))
+(define_insn "dmacwhu"
+  [(set (match_operand:DI 0 "register_operand" "=r,r")
+	(unspec:DI [(match_operand:V2SI 1 "register_operand" "0,r")
+		    (match_operand:V2HI 2 "register_operand" "r,r")
+		    (reg:DI MUL64_OUT_REG)]
+		   UNSPEC_ARCV2_DMACWHU))
    (clobber (reg:DI MUL64_OUT_REG))]
-  "TARGET_V2"
-  "dmpyhu%? %0, %1, %2"
+  "TARGET_HS"
+  "dmacwhu%? %0, %1, %2"
   [(set_attr "length" "4")
    (set_attr "type" "multi")
    (set_attr "predicable" "yes,no")

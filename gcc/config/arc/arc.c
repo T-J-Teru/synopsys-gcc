@@ -5876,6 +5876,10 @@ arc_init_builtins (void)
     = build_function_type (V4HI_type_node,
 			   tree_cons (NULL_TREE, V4HI_type_node,
 				      tree_cons (NULL_TREE, V4HI_type_node, endlink)));
+  tree long_ftype_v2si_v2hi
+    = build_function_type (long_long_integer_type_node,
+			   tree_cons (NULL_TREE, V2SI_type_node,
+				      tree_cons (NULL_TREE, V2HI_type_node, endlink)));
 
   /* Add the builtins.  */
 #define DEF_BUILTIN(NAME, N_ARGS, TYPE, ICODE, MASK)			\

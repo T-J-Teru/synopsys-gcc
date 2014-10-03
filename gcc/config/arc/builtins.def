@@ -70,6 +70,9 @@ DEF_BUILTIN (DMACHU,     2, int_ftype_v2hi_v2hi,    dmachu,     TARGET_V2 && (ar
 DEF_BUILTIN (DMPYH,      2, int_ftype_v2hi_v2hi,    dmpyh,      TARGET_V2 && (arc_mpy_option > 6))
 DEF_BUILTIN (DMPYHU,     2, int_ftype_v2hi_v2hi,    dmpyhu,     TARGET_V2 && (arc_mpy_option > 6))
 
+DEF_BUILTIN (DMACWH,     2, long_ftype_v2si_v2hi,   dmacwh,     TARGET_V2 && (arc_mpy_option > 8))
+DEF_BUILTIN (DMACWHU,    2, long_ftype_v2si_v2hi,   dmacwhu,    TARGET_V2 && (arc_mpy_option > 8))
+
 DEF_BUILTIN (VMAC2H,     2, v2si_ftype_v2hi_v2hi,   vmac2h,     TARGET_HS && (arc_mpy_option > 7))
 DEF_BUILTIN (VMAC2HU,    2, v2si_ftype_v2hi_v2hi,   vmac2hu,    TARGET_HS && (arc_mpy_option > 7))
 DEF_BUILTIN (VMPY2H,     2, v2si_ftype_v2hi_v2hi,   vmpy2h,     TARGET_HS && (arc_mpy_option > 7))

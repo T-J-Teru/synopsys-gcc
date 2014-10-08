@@ -1,18 +1,3 @@
-(define_c_enum "unspec" [
-  UNSPEC_ARCV2_DMACH
-  UNSPEC_ARCV2_DMACHU
-  UNSPEC_ARCV2_DMACWH
-  UNSPEC_ARCV2_DMACWHU
-  UNSPEC_ARCV2_QMACH
-  UNSPEC_ARCV2_QMACHU
-  UNSPEC_ARCV2_QMPYH
-  UNSPEC_ARCV2_QMPYHU
-  UNSPEC_ARCV2_VMAC2H
-  UNSPEC_ARCV2_VMAC2HU
-  UNSPEC_ARCV2_VMPY2H
-  UNSPEC_ARCV2_VMPY2HU
-])
-
 ;;64-bit vectors of halwords and words
 (define_mode_iterator VWH [V4HI V2SI])
 
@@ -210,7 +195,7 @@
 	  (minus:HI (vec_select:HI (match_dup 1) (parallel [(const_int 3)]))
 		    (vec_select:HI (match_dup 2) (parallel [(const_int 3)]))))
 	 ))]
-  "TARGET_V2"
+  "TARGET_HS"
   "vaddsub4h%? %0, %1, %2"
   [(set_attr "length" "4")
    (set_attr "type" "multi")
@@ -233,7 +218,7 @@
 	  (plus:HI (vec_select:HI (match_dup 1) (parallel [(const_int 3)]))
 		   (vec_select:HI (match_dup 2) (parallel [(const_int 3)]))))
 	 ))]
-  "TARGET_V2"
+  "TARGET_HS"
   "vsubadd4h%? %0, %1, %2"
   [(set_attr "length" "4")
    (set_attr "type" "multi")
@@ -464,7 +449,7 @@
 	(unspec:SI [(match_operand:V2HI 1 "register_operand" "0,r")
 		    (match_operand:V2HI 2 "register_operand" "r,r")
 		    (reg:DI MUL64_OUT_REG)]
-		   UNSPEC_ARCV2_DMACH))
+		   UNSPEC_ARC_DMACH))
    (clobber (reg:DI MUL64_OUT_REG))]
   "TARGET_V2"
   "dmach%? %0, %1, %2"
@@ -478,7 +463,7 @@
 	(unspec:SI [(match_operand:V2HI 1 "register_operand" "0,r")
 		    (match_operand:V2HI 2 "register_operand" "r,r")
 		    (reg:DI MUL64_OUT_REG)]
-		   UNSPEC_ARCV2_DMACHU))
+		   UNSPEC_ARC_DMACHU))
    (clobber (reg:DI MUL64_OUT_REG))]
   "TARGET_V2"
   "dmachu%? %0, %1, %2"
@@ -492,7 +477,7 @@
 	(unspec:DI [(match_operand:V2SI 1 "register_operand" "0,r")
 		    (match_operand:V2HI 2 "register_operand" "r,r")
 		    (reg:DI MUL64_OUT_REG)]
-		   UNSPEC_ARCV2_DMACWH))
+		   UNSPEC_ARC_DMACWH))
    (clobber (reg:DI MUL64_OUT_REG))]
   "TARGET_HS"
   "dmacwh%? %0, %1, %2"
@@ -506,7 +491,7 @@
 	(unspec:DI [(match_operand:V2SI 1 "register_operand" "0,r")
 		    (match_operand:V2HI 2 "register_operand" "r,r")
 		    (reg:DI MUL64_OUT_REG)]
-		   UNSPEC_ARCV2_DMACWHU))
+		   UNSPEC_ARC_DMACWHU))
    (clobber (reg:DI MUL64_OUT_REG))]
   "TARGET_HS"
   "dmacwhu%? %0, %1, %2"
@@ -516,11 +501,11 @@
    (set_attr "cond" "canuse,nocond")])
 
 (define_insn "vmac2h"
-  [(set (match_operand:DI 0 "register_operand" "=r,r")
-	(unspec:DI [(match_operand:V2HI 1 "register_operand" "0,r")
-		    (match_operand:V2HI 2 "register_operand" "r,r")
-		    (reg:DI MUL64_OUT_REG)]
-		     UNSPEC_ARCV2_VMAC2H))
+  [(set (match_operand:V2SI 0 "register_operand" "=r,r")
+	(unspec:V2SI [(match_operand:V2HI 1 "register_operand" "0,r")
+		      (match_operand:V2HI 2 "register_operand" "r,r")
+		      (reg:DI MUL64_OUT_REG)]
+		     UNSPEC_ARC_VMAC2H))
    (clobber (reg:DI MUL64_OUT_REG))]
   "TARGET_V2"
   "vmac2h%? %0, %1, %2"
@@ -530,11 +515,11 @@
    (set_attr "cond" "canuse,nocond")])
 
 (define_insn "vmac2hu"
-  [(set (match_operand:DI 0 "register_operand" "=r,r")
-	(unspec:DI [(match_operand:V2HI 1 "register_operand" "0,r")
-		    (match_operand:V2HI 2 "register_operand" "r,r")
-		    (reg:DI MUL64_OUT_REG)]
-		   UNSPEC_ARCV2_VMAC2HU))
+  [(set (match_operand:V2SI 0 "register_operand" "=r,r")
+	(unspec:V2SI [(match_operand:V2HI 1 "register_operand" "0,r")
+		      (match_operand:V2HI 2 "register_operand" "r,r")
+		      (reg:DI MUL64_OUT_REG)]
+		   UNSPEC_ARC_VMAC2HU))
    (clobber (reg:DI MUL64_OUT_REG))]
   "TARGET_V2"
   "vmac2hu%? %0, %1, %2"
@@ -544,10 +529,10 @@
    (set_attr "cond" "canuse,nocond")])
 
 (define_insn "vmpy2h"
-  [(set (match_operand:DI 0 "register_operand" "=r,r")
-	(unspec:DI [(match_operand:V2HI 1 "register_operand" "0,r")
-		    (match_operand:V2HI 2 "register_operand" "r,r")]
-		     UNSPEC_ARCV2_VMPY2H))
+  [(set (match_operand:V2SI 0 "register_operand" "=r,r")
+	(unspec:V2SI [(match_operand:V2HI 1 "register_operand" "0,r")
+		      (match_operand:V2HI 2 "register_operand" "r,r")]
+		     UNSPEC_ARC_VMPY2H))
    (clobber (reg:DI MUL64_OUT_REG))]
   "TARGET_V2"
   "vmpy2h%? %0, %1, %2"
@@ -557,10 +542,10 @@
    (set_attr "cond" "canuse,nocond")])
 
 (define_insn "vmpy2hu"
-  [(set (match_operand:DI 0 "register_operand" "=r,r")
-	(unspec:DI [(match_operand:V2HI 1 "register_operand" "0,r")
-		    (match_operand:V2HI 2 "register_operand" "r,r")]
-		   UNSPEC_ARCV2_VMPY2HU))
+  [(set (match_operand:V2SI 0 "register_operand" "=r,r")
+	(unspec:V2SI [(match_operand:V2HI 1 "register_operand" "0,r")
+		      (match_operand:V2HI 2 "register_operand" "r,r")]
+		     UNSPEC_ARC_VMPY2HU))
    (clobber (reg:DI MUL64_OUT_REG))]
   "TARGET_V2"
   "vmpy2hu%? %0, %1, %2"
@@ -574,7 +559,7 @@
 	(unspec:DI [(match_operand:V4HI 1 "register_operand" "0,r")
 		    (match_operand:V4HI 2 "register_operand" "r,r")
 		    (reg:DI MUL64_OUT_REG)]
-		     UNSPEC_ARCV2_QMACH))
+		     UNSPEC_ARC_QMACH))
    (clobber (reg:DI MUL64_OUT_REG))]
   "TARGET_HS"
   "qmach%? %0, %1, %2"
@@ -588,7 +573,7 @@
 	(unspec:DI [(match_operand:V4HI 1 "register_operand" "0,r")
 		    (match_operand:V4HI 2 "register_operand" "r,r")
 		    (reg:DI MUL64_OUT_REG)]
-		   UNSPEC_ARCV2_QMACHU))
+		   UNSPEC_ARC_QMACHU))
    (clobber (reg:DI MUL64_OUT_REG))]
   "TARGET_HS"
   "qmachu%? %0, %1, %2"
@@ -601,7 +586,7 @@
   [(set (match_operand:DI 0 "register_operand" "=r,r")
 	(unspec:DI [(match_operand:V4HI 1 "register_operand" "0,r")
 		    (match_operand:V4HI 2 "register_operand" "r,r")]
-		     UNSPEC_ARCV2_QMPYH))
+		     UNSPEC_ARC_QMPYH))
    (clobber (reg:DI MUL64_OUT_REG))]
   "TARGET_HS"
   "qmpyh%? %0, %1, %2"
@@ -614,7 +599,7 @@
   [(set (match_operand:DI 0 "register_operand" "=r,r")
 	(unspec:DI [(match_operand:V4HI 1 "register_operand" "0,r")
 		    (match_operand:V4HI 2 "register_operand" "r,r")]
-		   UNSPEC_ARCV2_QMPYHU))
+		   UNSPEC_ARC_QMPYHU))
    (clobber (reg:DI MUL64_OUT_REG))]
   "TARGET_HS"
   "qmpyhu%? %0, %1, %2"

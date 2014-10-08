@@ -5824,13 +5824,6 @@ arc_init_builtins (void)
 			   tree_cons (NULL_TREE, pcvoid_type_node,
 				      tree_cons (NULL_TREE, integer_type_node,
 						 endlink)));
-  tree int_ftype_short_int
-    = build_function_type (integer_type_node,
-			   tree_cons (NULL_TREE, short_integer_type_node, endlink));
-  tree void_ftype_int_int
-    = build_function_type (void_type_node,
-			   tree_cons (NULL_TREE, integer_type_node,
-				      tree_cons (NULL_TREE, integer_type_node, endlink)));
   tree void_ftype_usint_usint
     = build_function_type (void_type_node,
 			   tree_cons (NULL_TREE, long_unsigned_type_node,
@@ -5980,11 +5973,13 @@ arc_expand_builtin (tree exp,
   rtx xop[2];
   enum insn_code icode = d->icode;
   enum machine_mode tmode = insn_data[icode].operand[0].mode;
+  int nonvoid;
 
   if (id > ARC_SIMD_BUILTIN_BEGIN && id < ARC_SIMD_BUILTIN_END)
     return arc_expand_simd_builtin (exp, target, subtarget, mode, ignore);
 
-  gcc_assert (id < ARC_BUILTIN_COUNT);
+  if (id >= ARC_BUILTIN_COUNT)
+    internal_error ("bad builtin fcode");
 
   /* 1st part: Expand special builtins */
   switch (id)
@@ -5994,44 +5989,12 @@ arc_expand_builtin (tree exp,
       return NULL_RTX;
 
     case ARC_BUILTIN_RTIE:
-      emit_insn (gen_rtie (const1_rtx));
-      return NULL_RTX;
-
     case ARC_BUILTIN_SYNC:
-      emit_insn (gen_sync (const1_rtx));
-      return NULL_RTX;
-
     case ARC_BUILTIN_BRK:
-      emit_insn (gen_brk (const1_rtx));
-      return NULL_RTX;
-
     case ARC_BUILTIN_SWI:
-      emit_insn (gen_swi (const1_rtx));
-      return NULL_RTX;
-
-    case ARC_BUILTIN_TRAP_S:
-      {
-	tree arg = CALL_EXPR_ARG (exp, 0);
-
-	fold (arg);
-
-	xop[0] = expand_expr (arg, NULL_RTX, VOIDmode, EXPAND_NORMAL);
-
-	/* We don't give an error for non-cost values here because
-	   we still want to allow things to be fixed up by later inlining /
-	   constant folding / dead code elimination.  */
-	if  (CONST_INT_P (xop[0]) && !satisfies_constraint_L (xop[0]))
-	  {
-	    /* Keep this message in sync with the one in arc.md:trap_s,
-	       because *.md files don't get scanned by exgettext.  */
-	    error ("operand to trap_s should be an unsigned 6-bit value");
-	  }
-	emit_insn (gen_trap_s (xop[0]));
-	return NULL_RTX;
-      }
-
     case ARC_BUILTIN_UNIMP_S:
-      emit_insn (gen_unimp_s (const1_rtx));
+      gcc_assert (icode != 0);
+      emit_insn (GEN_FCN (icode) (const1_rtx));
       return NULL_RTX;
 
     case ARC_BUILTIN_ALIGNED:
@@ -6041,72 +6004,89 @@ arc_expand_builtin (tree exp,
       target = gen_reg_rtx (SImode);
       emit_insn (gen_clri (target, const1_rtx));
       return target;
-    }
 
+    case ARC_BUILTIN_TRAP_S:
+    case ARC_BUILTIN_SLEEP:
+      tree arg0 = CALL_EXPR_ARG (exp, 0);
+      fold (arg0);
+      rtx op0 = expand_expr (arg0, NULL_RTX, VOIDmode, EXPAND_NORMAL);
+
+      if  (!CONST_INT_P (op0) || !satisfies_constraint_L (op0))
+	{
+	  error ("builtin operand should be an unsigned 6-bit value");
+	  return NULL_RTX;
+	}
+      gcc_assert (icode != 0);
+      emit_insn (GEN_FCN (icode) (op0));
+      return NULL_RTX;
+
+    }
 
   /* 2nd part: Expand regular builtins */
-  if ((target == NULL_RTX && mode != VOIDmode)
-      || (target
-	  && (GET_MODE (target) != tmode
-	      || !insn_data[icode].operand[0].predicate (target, tmode))))
-    {
-      target = gen_reg_rtx (tmode);
-    }
+  if (icode == 0)
+    internal_error ("bad builtin fcode");
+
+  nonvoid = TREE_TYPE (TREE_TYPE (fndecl)) != void_type_node;
+
+  if (nonvoid)
+    if (target == NULL_RTX
+	||GET_MODE (target) != tmode
+	|| !insn_data[icode].operand[0].predicate (target, tmode))
+      {
+	target = gen_reg_rtx (tmode);
+      }
 
   gcc_assert (n_args <= 2);
   for (i = 0; i < n_args; i++)
     {
       tree arg = CALL_EXPR_ARG (exp, i);
-      rtx op = expand_expr (arg, NULL_RTX, VOIDmode, EXPAND_NORMAL);
-      enum machine_mode mode = insn_data[icode].operand[i+1].mode;
+      enum machine_mode mode = insn_data[icode].operand[i+nonvoid].mode;
+      rtx op = expand_expr (arg, NULL_RTX, mode, EXPAND_NORMAL);
       enum machine_mode opmode = GET_MODE (op);
+
+      if (CONST_INT_P (op))
+	opmode = mode;
 
       /* In case the insn wants input operands in modes different from
          the result, abort.  */
       gcc_assert (opmode == mode || opmode == VOIDmode);
 
-      if (!insn_data[icode].operand[i+1].predicate (op, mode))
+      if (!insn_data[icode].operand[i+nonvoid].predicate (op, mode))
         op = copy_to_mode_reg (mode, op);
 
       xop[i] = op;
     }
 
-  if (target)
-    switch (n_args)
-      {
-      case 0:
-	pat = GEN_FCN (icode) (target);
-	break;
-      case 1:
+  switch (n_args)
+    {
+    case 0:
+      pat = GEN_FCN (icode) (target);
+      break;
+    case 1:
+      if (nonvoid)
 	pat = GEN_FCN (icode) (target, xop[0]);
-	break;
-      case 2:
-	pat = GEN_FCN (icode) (target, xop[0], xop[1]);
-	break;
-
-      default:
-	gcc_unreachable();
-      }
-  else
-    switch (n_args)
-      {
-      case 1:
+      else
 	pat = GEN_FCN (icode) (xop[0]);
-	break;
-      case 2:
+      break;
+    case 2:
+      if (nonvoid)
+	pat = GEN_FCN (icode) (target, xop[0], xop[1]);
+      else
 	pat = GEN_FCN (icode) (xop[0], xop[1]);
-	break;
-
-      default:
-	gcc_unreachable();
-      }
+      break;
+    default:
+      gcc_unreachable();
+    }
 
   if (pat == NULL_RTX)
     return NULL_RTX;
 
   emit_insn (pat);
 
-  return target;
+  if (nonvoid)
+    return target;
+  else
+    return const0_rtx;
 }
 
 /* Returns true if the operands[opno] is a valid compile-time constant to be
@@ -9672,11 +9652,11 @@ arc_process_double_reg_moves (rtx *operands)
 	  emit_insn (gen_rtx_SET (VOIDmode,
 				  destHigh,
 				  gen_rtx_UNSPEC_VOLATILE (Pmode, gen_rtvec (1, src),
-				  VUNSPEC_LR_HIGH)));
+				  VUNSPEC_ARC_LR_HIGH)));
 	  emit_insn (gen_rtx_SET (VOIDmode,
 				  destLow,
 				  gen_rtx_UNSPEC_VOLATILE (Pmode, gen_rtvec (1, src),
-				  VUNSPEC_LR)));
+				  VUNSPEC_ARC_LR)));
 	}
     }
   else if (state == destDx)
@@ -9688,7 +9668,7 @@ arc_process_double_reg_moves (rtx *operands)
 
       emit_insn (gen_rtx_UNSPEC_VOLATILE (Pmode,
 					  gen_rtvec (3, dest, srcHigh, srcLow),
-					  VUNSPEC_DEXCL_NORES));
+					  VUNSPEC_ARC_DEXCL_NORES));
 
     }
   else

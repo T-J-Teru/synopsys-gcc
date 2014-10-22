@@ -1,3 +1,9 @@
+2014-10-22 Claudiu Zissulescu <claziss@synopsys.com>
+
+	* config/arc/arc.c: Enable ACCL,ACCH to be used when FPU fused
+          instruction are selected.
+	* config/arc/fpu.md: Add double fused instructions.
+
 2014-10-20 Claudiu Zissulescu <claziss@synopsys.com>
 
 	* config/arc/arc.h (ACC_REG_FIRST, ACC_REG_LAST, ACCL_REGNO,

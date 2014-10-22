@@ -1631,7 +1631,8 @@ arc_conditional_register_usage (void)
     }
 
   /*V2 Accumulator */
-  if (TARGET_V2 && (arc_mpy_option > 6))
+  if (TARGET_V2
+      && ((arc_mpy_option > 6) || TARGET_FP_DFUZED || TARGET_FP_SFUZED))
   {
     arc_regno_reg_class[ACCL_REGNO] = WRITABLE_CORE_REGS;
     arc_regno_reg_class[ACCH_REGNO] = WRITABLE_CORE_REGS;

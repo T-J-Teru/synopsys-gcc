@@ -2208,6 +2208,16 @@ maybe_record_trace_start (rtx start, rtx origin)
 	 got some kind of optimization error.  */
       gcc_checking_assert (cfi_row_equal_p (cur_row, ti->beg_row));
 
+      if (!cfi_row_equal_p (cur_row, ti->beg_row))
+	{
+	  fprintf (stderr, "APB: cfi row miss-match: %s\n",
+		   current_function_name ());
+	  if (getenv ("APB_ABORT") != NULL)
+	    abort ();
+	}
+      else
+	fprintf (stderr, "APB: cfi row match in %s\n",
+		 current_function_name ());
       /* The args_size is allowed to conflict if it isn't actually used.  */
       if (ti->beg_true_args_size != args_size)
 	ti->args_size_undefined = true;

@@ -1687,7 +1687,12 @@ dwarf2out_frame_debug_expr (rtx expr)
           return;
 
 	default:
-	  gcc_unreachable ();
+	  {
+	    fprintf (stderr, "APB: I don't understand %s %d\n",
+		     (src ? rtx_name[(int) GET_CODE (src)] : "fallthru"),
+		     (src ? INSN_UID (dest) : 0));
+	    gcc_unreachable ();
+	  }
 	}
       break;
 
@@ -2210,14 +2215,17 @@ maybe_record_trace_start (rtx start, rtx origin)
 
       if (!cfi_row_equal_p (cur_row, ti->beg_row))
 	{
+	  if (dump_file)
+	    fprintf (dump_file, "\tcfi miss-match between current trace %u and beginning trace %u\n",
+		     cur_trace->id, ti->id);
 	  fprintf (stderr, "APB: cfi row miss-match: %s\n",
 		   current_function_name ());
 	  if (getenv ("APB_ABORT") != NULL)
 	    abort ();
 	}
-      else
-	fprintf (stderr, "APB: cfi row match in %s\n",
-		 current_function_name ());
+      /* else */
+      /* 	fprintf (stderr, "APB: cfi row match in %s\n", */
+      /* 		 current_function_name ()); */
       /* The args_size is allowed to conflict if it isn't actually used.  */
       if (ti->beg_true_args_size != args_size)
 	ti->args_size_undefined = true;

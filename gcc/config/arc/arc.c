@@ -2756,7 +2756,15 @@ arc_save_restore (rtx base_reg,
 	  if (epilogue_p == 2)
 	    sibthunk_insn = insn;
 	  else
-	    frame_insn (insn);
+	    {
+	      insn = frame_insn (insn);
+	      if (epilogue_p)
+		for (r = start_call; r <= end_call; r++)
+		  {
+		    rtx reg = gen_rtx_REG (SImode, r);
+		    add_reg_note (insn, REG_CFA_RESTORE, reg);
+		  }
+	    }
 	  offset += off;
 	}
 
@@ -2783,12 +2791,14 @@ arc_save_restore (rtx base_reg,
 	    {
 	      rtx reg = gen_rtx_REG (mode, regno);
 	      rtx addr, mem;
+	      int cfa_adjust = 0;
 
 	      if (*first_offset)
 		{
 		  gcc_assert (!offset);
 		  addr = plus_constant (Pmode, base_reg, *first_offset);
 		  addr = gen_rtx_PRE_MODIFY (Pmode, base_reg, addr);
+		  cfa_adjust = *first_offset;
 		  *first_offset = 0;
 		}
 	      else
@@ -2798,7 +2808,18 @@ arc_save_restore (rtx base_reg,
 		}
 	      mem = gen_frame_mem (mode, addr);
 	      if (epilogue_p)
-		frame_move_inc (reg, mem, base_reg, addr);
+		{
+		  rtx insn;
+
+		  insn = frame_move_inc (reg, mem, base_reg, addr);
+		  add_reg_note (insn, REG_CFA_RESTORE, reg);
+		  if (cfa_adjust)
+		    add_reg_note (insn, REG_CFA_ADJUST_CFA,
+				  gen_rtx_SET (VOIDmode, stack_pointer_rtx,
+					       plus_constant (Pmode,
+							      stack_pointer_rtx,
+							      cfa_adjust)));
+		}
 	      else
 		frame_move_inc (mem, reg, base_reg, addr);
 
@@ -2813,6 +2834,9 @@ arc_save_restore (rtx base_reg,
     }/* if */
   if (sibthunk_insn)
     {
+      int start_call = frame->millicode_start_reg;
+      int end_call = frame->millicode_end_reg;
+      int r;
       rtx r12 = gen_rtx_REG (Pmode, 12);
 
       frame_insn (gen_rtx_SET (VOIDmode, r12, GEN_INT (offset)));
@@ -2822,6 +2846,14 @@ arc_save_restore (rtx base_reg,
 		       gen_rtx_PLUS (Pmode, stack_pointer_rtx, r12));
       sibthunk_insn = emit_jump_insn (sibthunk_insn);
       RTX_FRAME_RELATED_P (sibthunk_insn) = 1;
+
+      /* Would be nice if we could do this earlier, when the PARALLEL is
+	 populated, but these need to be attached after the emit.  */
+      for (r = start_call; r <= end_call; r++)
+	{
+	  rtx reg = gen_rtx_REG (Pmode, r);
+	  add_reg_note (sibthunk_insn, REG_CFA_RESTORE, reg);
+	}
     }
 } /* arc_save_restore */
 
@@ -3114,11 +3146,17 @@ arc_expand_epilogue (int sibcall_p)
 	  if (!(ARC_INTERRUPT_P (fn_type)
 		&& (irq_ctrl_saved.irq_save_last_reg > 26)))
 	    {
+	      rtx addr, insn;
 
-	      rtx addr = gen_rtx_POST_INC (Pmode, stack_pointer_rtx);
-
-	      frame_move_inc (frame_pointer_rtx, gen_frame_mem (Pmode, addr),
-			      stack_pointer_rtx, 0);
+	      addr = gen_rtx_POST_INC (Pmode, stack_pointer_rtx);
+	      insn = frame_move_inc (frame_pointer_rtx,
+				     gen_frame_mem (Pmode, addr),
+				     stack_pointer_rtx, 0);
+	      add_reg_note (insn, REG_CFA_DEF_CFA,
+			    plus_constant (Pmode,
+					   stack_pointer_rtx,
+					   (size_to_deallocate
+					    - UNITS_PER_WORD)));
 	    }
 	  size_to_deallocate -= UNITS_PER_WORD;
 	}
@@ -3160,6 +3198,8 @@ arc_expand_epilogue (int sibcall_p)
           rtx ra = gen_rtx_REG (Pmode, RETURN_ADDR_REGNUM);
           int ra_offs = cfun->machine->frame_info.reg_size + first_offset;
           rtx addr = plus_constant (Pmode, stack_pointer_rtx, ra_offs);
+	  HOST_WIDE_INT cfa_adjust = ra_offs;
+	  rtx insn;
 
           /* If the load of blink would need a LIMM, but we can add
              the offset quickly to sp, do the latter.  */
@@ -3174,6 +3214,7 @@ arc_expand_epilogue (int sibcall_p)
               frame_stack_add (ra_offs);
               ra_offs = 0;
               addr = stack_pointer_rtx;
+	      cfa_adjust = 0;
             }
           /* See if we can combine the load of the return address with the
              final stack adjustment.
@@ -3187,13 +3228,23 @@ arc_expand_epilogue (int sibcall_p)
               addr = gen_rtx_PRE_MODIFY (Pmode, stack_pointer_rtx, addr);
               first_offset = 0;
               size_to_deallocate -= cfun->machine->frame_info.reg_size;
+	      cfa_adjust = cfun->machine->frame_info.reg_size;
             }
           else if (!ra_offs && size_to_deallocate == UNITS_PER_WORD)
             {
               addr = gen_rtx_POST_INC (Pmode, addr);
               size_to_deallocate = 0;
+	      cfa_adjust = UNITS_PER_WORD;
             }
-          frame_move_inc (ra, gen_frame_mem (Pmode, addr), stack_pointer_rtx, addr);
+          insn = frame_move_inc (ra, gen_frame_mem (Pmode, addr),
+				 stack_pointer_rtx, addr);
+	  add_reg_note (insn, REG_CFA_RESTORE, ra);
+	  /* if (cfa_adjust != 0) */
+	  /*   add_reg_note (insn, REG_CFA_ADJUST_CFA, */
+	  /* 		  gen_rtx_SET (VOIDmode, stack_pointer_rtx, */
+	  /* 			       plus_constant (Pmode, */
+	  /* 					      stack_pointer_rtx, */
+	  /* 					      cfa_adjust))); */
 	}
 
       if (!millicode_p)
@@ -3240,7 +3291,7 @@ arc_expand_epilogue (int sibcall_p)
 	emit_jump_insn (gen_simple_return ());
     }
  epilogue_done:
-  if (!TARGET_EPILOGUE_CFI)
+  if (TARGET_NO_EPILOGUE_CFI)
     {
       rtx insn;
 

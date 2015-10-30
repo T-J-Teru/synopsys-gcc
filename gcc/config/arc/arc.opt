@@ -432,11 +432,11 @@ Target Report RejectNegative
 Enable 64-bit Time-Stamp Counter extension instruction
 
 mno-epilogue-cfi
-Target Report RejectNegative InverseMask(EPILOGUE_CFI)
+Target Report RejectNegative Mask(NO_EPILOGUE_CFI)
 Disable generation of cfi for epilogues.
 
 mepilogue-cfi
-Target RejectNegative Mask(EPILOGUE_CFI)
+Target RejectNegative InverseMask(NO_EPILOGUE_CFI)
 Enable generation of cfi for epilogues.
 
 EB

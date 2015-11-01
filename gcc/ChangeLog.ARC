@@ -1,5 +1,11 @@
 2015-11-01  Andrew Burgess  <andrew.burgess@embecosm.com>
 
+	* config/arc/arc.c (arc_save_restore): Add reg-notes to epilogue
+	instructions describing CFI related changes.
+	(arc_expand_epilogue): Likewise.
+
+2015-11-01  Andrew Burgess  <andrew.burgess@embecosm.com>
+
 	* config/arc/arc.c (arc_expand_epilogue): Update option used to
 	clear frame related flag.
 	* config/arc/arc.opt: Update option used for clearing frame

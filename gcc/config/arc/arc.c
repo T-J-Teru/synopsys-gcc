@@ -3222,7 +3222,7 @@ arc_expand_epilogue (int sibcall_p)
 	emit_jump_insn (gen_simple_return ());
     }
  epilogue_done:
-  if (!TARGET_EPILOGUE_CFI)
+  if (TARGET_NO_EPILOGUE_CFI)
     {
       rtx insn;
 

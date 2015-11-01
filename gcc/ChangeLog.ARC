@@ -1,3 +1,10 @@
+2015-11-01  Andrew Burgess  <andrew.burgess@embecosm.com>
+
+	* config/arc/arc.c (arc_expand_epilogue): Update option used to
+	clear frame related flag.
+	* config/arc/arc.opt: Update option used for clearing frame
+	related flag from epilogue instructions.
+
 2015-10-22  Andrew Burgess  <andrew.burgess@embecosm.com>
 
 	* config/arc/arc.c (MUST_SAVE_REGISTER): Delete.
